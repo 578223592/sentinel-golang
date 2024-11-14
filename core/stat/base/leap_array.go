@@ -47,6 +47,7 @@ func (ww *BucketWrap) isTimeInBucket(now uint64, bucketLengthInMs uint32) bool {
 	return ww.BucketStart <= now && now < ww.BucketStart+uint64(bucketLengthInMs)
 }
 
+// 计算当前 idx 对应的 bucket 的已经经过的时间
 func calculateStartTime(now uint64, bucketLengthInMs uint32) uint64 {
 	return now - (now % uint64(bucketLengthInMs))
 }
@@ -68,7 +69,7 @@ func NewAtomicBucketWrapArrayWithTime(len int, bucketLengthInMs uint32, now uint
 		data:   make([]*BucketWrap, len),
 	}
 
-	idx := int((now / uint64(bucketLengthInMs)) % uint64(len))
+	idx := int((now / uint64(bucketLengthInMs)) % uint64(len)) //初始idx为当前时间戳的idx，idx并不是从0开始
 	startTime := calculateStartTime(now, bucketLengthInMs)
 
 	for i := idx; i <= len-1; i++ {
@@ -92,7 +93,7 @@ func NewAtomicBucketWrapArrayWithTime(len int, bucketLengthInMs uint32, now uint
 
 	// calculate base address for real data array
 	sliHeader := (*util.SliceHeader)(unsafe.Pointer(&ret.data))
-	ret.base = unsafe.Pointer((**BucketWrap)(unsafe.Pointer(sliHeader.Data)))
+	ret.base = unsafe.Pointer((**BucketWrap)(unsafe.Pointer(sliHeader.Data))) //(**BucketWrap) 表示一个地址，指向*BucketWrap
 	return ret
 }
 
@@ -120,12 +121,12 @@ func (aa *AtomicBucketWrapArray) get(idx int) *BucketWrap {
 	// aa.elementOffset(idx) return the secondary pointer of BucketWrap, which is the pointer to the aa.data[idx]
 	// then convert to (*unsafe.Pointer)
 	if offset, ok := aa.elementOffset(idx); ok {
-		return (*BucketWrap)(atomic.LoadPointer((*unsafe.Pointer)(offset)))
+		return (*BucketWrap)(atomic.LoadPointer((*unsafe.Pointer)(offset))) //atomic.LoadPointer:取出地址指向的值
 	}
 	return nil
 }
 
-func (aa *AtomicBucketWrapArray) compareAndSet(idx int, except, update *BucketWrap) bool {
+func (aa *AtomicBucketWrapArray) compareAndSet(idx int, except, update *BucketWrap) bool { //todo：看到这里了，但是还是觉得base没必要
 	// aa.elementOffset(idx) return the secondary pointer of BucketWrap, which is the pointer to the aa.data[idx]
 	// then convert to (*unsafe.Pointer)
 	// update secondary pointer

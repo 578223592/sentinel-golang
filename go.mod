@@ -1,6 +1,8 @@
 module github.com/alibaba/sentinel-golang
 
-go 1.18
+go 1.22
+
+toolchain go1.23.3
 
 require (
 	github.com/fsnotify/fsnotify v1.4.7
