@@ -52,10 +52,10 @@ func main() {
 		{
 			Resource:               "some-test",
 			TokenCalculateStrategy: flow.WarmUp,
-			ControlBehavior:        flow.Reject,
-			Threshold:              100,
 			WarmUpPeriodSec:        10,
 			WarmUpColdFactor:       3,
+			ControlBehavior:        flow.Reject,
+			Threshold:              100,
 			StatIntervalInMs:       1000,
 		},
 	})
@@ -92,6 +92,9 @@ func Task(counter *Counter) {
 	}
 }
 
+// timerTask
+// @Description: 每秒统计
+// @param counter
 func timerTask(counter *Counter) {
 	fmt.Println("begin to statistic!!!")
 	var (

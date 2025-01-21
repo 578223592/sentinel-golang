@@ -57,7 +57,7 @@ type RuleCheckSlot interface {
 // StatSlot would not handle any panic, and pass up all panic to slot chain
 type StatSlot interface {
 	BaseSlot
-	// OnEntryPass function will be invoked when StatPrepareSlots and RuleCheckSlots execute pass
+	// OnEntryPassed function will be invoked when StatPrepareSlots and RuleCheckSlots execute pass
 	// StatSlots will do some statistic logic, such as QPS、log、etc
 	OnEntryPassed(ctx *EntryContext)
 	// OnEntryBlocked function will be invoked when StatPrepareSlots and RuleCheckSlots fail to execute
@@ -73,6 +73,7 @@ type StatSlot interface {
 
 // SlotChain hold all system slots and customized slot.
 // SlotChain support plug-in slots developed by developer.
+// @Description:  Slot 是运行时候的处理者 ，这里用到了责任链模式
 type SlotChain struct {
 	// statPres is in ascending order by StatPrepareSlot.Order() value.
 	statPres []StatPrepareSlot
@@ -110,7 +111,7 @@ func NewSlotChain() *SlotChain {
 	}
 }
 
-// Get an EntryContext from EntryContext ctxPool, if ctxPool doesn't have enough EntryContext then new one.
+// GetPooledContext Get an EntryContext from EntryContext ctxPool, if ctxPool doesn't have enough EntryContext then new one.
 func (sc *SlotChain) GetPooledContext() *EntryContext {
 	ctx := sc.ctxPool.Get().(*EntryContext)
 	ctx.startTime = util.CurrentTimeMillis()
@@ -157,7 +158,7 @@ func (sc *SlotChain) AddStatSlot(s StatSlot) {
 	})
 }
 
-// The entrance of slot chain
+// Entry The entrance of slot chain
 // Return the TokenResult and nil if internal panic.
 func (sc *SlotChain) Entry(ctx *EntryContext) *TokenResult {
 	// This should not happen, unless there are errors existing in Sentinel internal.
@@ -172,29 +173,27 @@ func (sc *SlotChain) Entry(ctx *EntryContext) *TokenResult {
 
 	// execute prepare slot
 	sps := sc.statPres
-	if len(sps) > 0 {
-		for _, s := range sps {
-			s.Prepare(ctx)
-		}
+	for _, s := range sps {
+		s.Prepare(ctx)
 	}
 
 	// execute rule based checking slot
-	rcs := sc.ruleChecks
 	var ruleCheckRet *TokenResult
-	if len(rcs) > 0 {
-		for _, s := range rcs {
-			sr := s.Check(ctx)
-			if sr == nil {
-				// nil equals to check pass
-				continue
-			}
-			// check slot result
-			if sr.IsBlocked() {
-				ruleCheckRet = sr
-				break
-			}
+	rcs := sc.ruleChecks
+
+	for _, s := range rcs {
+		sr := s.Check(ctx)
+		if sr == nil {
+			// nil equals to check pass
+			continue
+		}
+		// check slot result
+		if sr.IsBlocked() {
+			ruleCheckRet = sr
+			break
 		}
 	}
+
 	if ruleCheckRet == nil {
 		ctx.RuleCheckResult.ResetToPass()
 	} else {

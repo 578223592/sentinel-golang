@@ -35,7 +35,7 @@ type SentinelConfig struct {
 	App struct {
 		// Name represents the name of current running service.
 		Name string
-		// Type indicates the classification of the service (e.g. web service, API gateway).
+		// Type indicates the classification of the service (e.g. web service, API gateway). //todo 普通应用，网关的区别还是只是标识
 		Type int32
 	}
 	// Exporter represents configuration items related to exporter, like metric exporter.
@@ -44,11 +44,12 @@ type SentinelConfig struct {
 	Log LogConfig
 	// Stat represents configuration items related to statistics.
 	Stat StatConfig
-	// UseCacheTime indicates whether to cache time(ms)
+	// UseCacheTime indicates whether to cache time(ms)    //todo：看起来是缓存当前的时间，这样来减小消耗吗，美妙，值得记录下来一波
 	UseCacheTime bool `yaml:"useCacheTime"`
 }
 
 // ExporterConfig represents configuration items related to exporter, like metric exporter.
+// ExporterConfig：prometheus exporter 暴露服务的端口和 path
 type ExporterConfig struct {
 	Metric MetricExporterConfig
 }
@@ -68,6 +69,7 @@ type LogConfig struct {
 	// Dir represents the log directory path.
 	Dir string
 	// UsePid indicates whether the filename ends with the process ID (PID).
+	// 文件是否使用 pid（防止一台机器部署两个应用日志混合），
 	UsePid bool `yaml:"usePid"`
 	// Metric represents the configuration items of the metric log.
 	Metric MetricLogConfig

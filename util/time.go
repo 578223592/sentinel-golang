@@ -280,12 +280,12 @@ func FormatDate(tsMillis uint64) string {
 	return time.Unix(0, int64(tsMillis*UnixTimeUnitOffset)).Format(DateFormat)
 }
 
-// Returns the current Unix timestamp in milliseconds.
+// CurrentTimeMillis returns the current Unix timestamp in milliseconds.
 func CurrentTimeMillis() uint64 {
 	return CurrentClock().CurrentTimeMillis()
 }
 
-// Returns the current Unix timestamp in nanoseconds.
+// CurrentTimeNano returns the current Unix timestamp in nanoseconds.
 func CurrentTimeNano() uint64 {
 	return CurrentClock().CurrentTimeNano()
 }

@@ -42,6 +42,7 @@ func (s RelationStrategy) String() string {
 	}
 }
 
+// TokenCalculateStrategy 计算qps策略等的策略：直接、预热、内存自适应等等
 type TokenCalculateStrategy int32
 
 const (
@@ -89,30 +90,31 @@ type Rule struct {
 	ID string `json:"id,omitempty"`
 	// Resource represents the resource name.
 	Resource               string                 `json:"resource"`
-	TokenCalculateStrategy TokenCalculateStrategy `json:"tokenCalculateStrategy"`
+	TokenCalculateStrategy TokenCalculateStrategy `json:"tokenCalculateStrategy"` //计算qps策略等的策略
 	ControlBehavior        ControlBehavior        `json:"controlBehavior"`
 	// Threshold means the threshold during StatIntervalInMs
 	// If StatIntervalInMs is 1000(1 second), Threshold means QPS
 	Threshold        float64          `json:"threshold"`
-	RelationStrategy RelationStrategy `json:"relationStrategy"`
+	RelationStrategy RelationStrategy `json:"relationStrategy"` //当 RelationStrategy 字段为 AssociatedResource 时， RefResource 表示其关联的resource
 	RefResource      string           `json:"refResource"`
 	// MaxQueueingTimeMs only takes effect when ControlBehavior is Throttling.
 	// When MaxQueueingTimeMs is 0, it means Throttling only controls interval of requests,
 	// and requests exceeding the threshold will be rejected directly.
 	MaxQueueingTimeMs uint32 `json:"maxQueueingTimeMs"`
-	WarmUpPeriodSec   uint32 `json:"warmUpPeriodSec"`
-	WarmUpColdFactor  uint32 `json:"warmUpColdFactor"`
-	// StatIntervalInMs indicates the statistic interval and it's the optional setting for flow Rule.
+	WarmUpPeriodSec   uint32 `json:"warmUpPeriodSec"`  //预热时间，当 TokenCalculateStrategy 为 WarmUp 时有效
+	WarmUpColdFactor  uint32 `json:"warmUpColdFactor"` //预热因子，影响预热速度。当 TokenCalculateStrategy 为 WarmUp 时有效
+	// StatIntervalInMs indicates the statistic interval. It's the optional setting for flow Rule.
 	// If user doesn't set StatIntervalInMs, that means using default metric statistic of resource.
 	// If the StatIntervalInMs user specifies can not reuse the global statistic of resource,
 	// 		sentinel will generate independent statistic structure for this rule.
 	StatIntervalInMs uint32 `json:"statIntervalInMs"`
 
+	// 自适应的一个控制，通过内存将threshold控制在 [ HighMemUsageThreshold, LowMemUsageThreshold]
 	// adaptive flow control algorithm related parameters
 	// limitation: LowMemUsageThreshold > HighMemUsageThreshold && MemHighWaterMarkBytes > MemLowWaterMarkBytes
 	// if the current memory usage is less than or equals to MemLowWaterMarkBytes, threshold == LowMemUsageThreshold
 	// if the current memory usage is more than or equals to MemHighWaterMarkBytes, threshold == HighMemUsageThreshold
-	// if  the current memory usage is in (MemLowWaterMarkBytes, MemHighWaterMarkBytes), threshold is in (HighMemUsageThreshold, LowMemUsageThreshold)
+	// if  the current memory usage is in (MemLowWaterMarkBytes, MemHighWaterMarkBytes), threshold is in (HighMemUsageThreshold, LowMemUsageThreshold).
 	LowMemUsageThreshold  int64 `json:"lowMemUsageThreshold"`
 	HighMemUsageThreshold int64 `json:"highMemUsageThreshold"`
 	MemLowWaterMarkBytes  int64 `json:"memLowWaterMarkBytes"`

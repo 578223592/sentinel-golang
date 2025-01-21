@@ -95,7 +95,7 @@ func NewEmptyEntryContext() *EntryContext {
 	return &EntryContext{}
 }
 
-// The input data of sentinel
+// SentinelInput The input data of sentinel
 type SentinelInput struct {
 	BatchCount uint32
 	Flag       int32

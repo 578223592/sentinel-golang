@@ -42,14 +42,14 @@ type TrafficControllerMap map[string][]*TrafficShapingController
 
 var (
 	tcGenFuncMap = make(map[trafficControllerGenKey]TrafficControllerGenFunc, 6)
-	tcMap        = make(TrafficControllerMap)
-	tcMux        = new(sync.RWMutex)
+	tcMap        = make(TrafficControllerMap) //看起来名字是取之 traffic Controller
+	tcMux        = new(sync.RWMutex)          //看起来tcMux保护的对象就是tcMap
 	nopStat      = &standaloneStatistic{
 		reuseResourceStat: false,
 		readOnlyMetric:    base.NopReadStat(),
 		writeOnlyMetric:   base.NopWriteStat(),
 	}
-	currentRules  = make(map[string][]*Rule, 0)
+	currentRules  = make(map[string][]*Rule) //rule相当于是配置，虽然实际控制用的是traficShape保存下来的目的目前发现是：1.方便对比新配置与与老配置是否相同，从而避免每一次都升级配置
 	updateRuleMux = new(sync.Mutex)
 )
 
@@ -186,8 +186,40 @@ func onRuleUpdate(rawResRulesMap map[string][]*Rule) (err error) {
 	}()
 
 	// ignore invalid rules
-	validResRulesMap := make(map[string][]*Rule, len(rawResRulesMap))
-	for res, rules := range rawResRulesMap {
+	validResRulesMap := buildValidRules(rawResRulesMap)
+
+	start := util.CurrentTimeNano()
+
+	tcMux.RLock()
+	tcMapClone := make(TrafficControllerMap, len(validResRulesMap)) //todo 确认一下这里的clone为什么不直接复制呢？ 直接复制会导致slice的底层共享
+	for res, tcs := range tcMap {
+		resTcClone := make([]*TrafficShapingController, 0, len(tcs))
+		resTcClone = append(resTcClone, tcs...)
+		tcMapClone[res] = tcs
+	}
+	tcMux.RUnlock()
+
+	m := make(TrafficControllerMap, len(validResRulesMap))
+	for resourceName, rulesOfRes := range validResRulesMap {
+		newTcsOfRes := buildResourceTrafficShapingController(resourceName, rulesOfRes, tcMapClone[resourceName])
+		if len(newTcsOfRes) > 0 {
+			m[resourceName] = newTcsOfRes
+		}
+	}
+
+	tcMux.Lock()
+	tcMap = m
+	tcMux.Unlock()
+	currentRules = rawResRulesMap //currentRules 保存rawResRulesMap而不是validResRulesMap的目的是为了方便对比新老规则，参考currentRules的定义
+
+	logging.Debug("[Flow onRuleUpdate] Time statistic(ns) for updating flow rule", "timeCost", util.CurrentTimeNano()-start)
+	logRuleUpdate(validResRulesMap)
+	return nil
+}
+
+func buildValidRules(rawResRulesMap map[string][]*Rule) (validResRulesMap map[string][]*Rule) {
+	validResRulesMap = make(map[string][]*Rule, len(rawResRulesMap))
+	for resourceName, rules := range rawResRulesMap {
 		validResRules := make([]*Rule, 0, len(rules))
 		for _, rule := range rules {
 			if err := IsValidRule(rule); err != nil {
@@ -197,37 +229,10 @@ func onRuleUpdate(rawResRulesMap map[string][]*Rule) (err error) {
 			validResRules = append(validResRules, rule)
 		}
 		if len(validResRules) > 0 {
-			validResRulesMap[res] = validResRules
+			validResRulesMap[resourceName] = validResRules
 		}
 	}
-
-	start := util.CurrentTimeNano()
-
-	tcMux.RLock()
-	tcMapClone := make(TrafficControllerMap, len(validResRulesMap))
-	for res, tcs := range tcMap {
-		resTcClone := make([]*TrafficShapingController, 0, len(tcs))
-		resTcClone = append(resTcClone, tcs...)
-		tcMapClone[res] = resTcClone
-	}
-	tcMux.RUnlock()
-
-	m := make(TrafficControllerMap, len(validResRulesMap))
-	for res, rulesOfRes := range validResRulesMap {
-		newTcsOfRes := buildResourceTrafficShapingController(res, rulesOfRes, tcMapClone[res])
-		if len(newTcsOfRes) > 0 {
-			m[res] = newTcsOfRes
-		}
-	}
-
-	tcMux.Lock()
-	tcMap = m
-	tcMux.Unlock()
-	currentRules = rawResRulesMap
-
-	logging.Debug("[Flow onRuleUpdate] Time statistic(ns) for updating flow rule", "timeCost", util.CurrentTimeNano()-start)
-	logRuleUpdate(validResRulesMap)
-	return nil
+	return validResRulesMap
 }
 
 // LoadRules loads the given flow rules to the rule manager, while all previous rules will be replaced.
@@ -450,7 +455,7 @@ func generateStatFor(rule *Rule) (*standaloneStatistic, error) {
 		retStat.readOnlyMetric = readStat
 		retStat.writeOnlyMetric = nil
 		return &retStat, nil
-	} else if err == base.GlobalStatisticNonReusableError {
+	} else if errors.Is(err, base.GlobalStatisticNonReusableError) {
 		logging.Info("[FlowRuleManager] Flow rule couldn't reuse global statistic and will generate independent statistic", "rule", rule)
 		retStat.reuseResourceStat = false
 		realLeapArray := sbase.NewBucketLeapArray(sampleCount, intervalInMs)
@@ -538,7 +543,8 @@ func calculateReuseIndexFor(r *Rule, oldResTcs []*TrafficShapingController) (equ
 	return equalIdx, reuseStatIdx
 }
 
-// buildResourceTrafficShapingController builds TrafficShapingController slice from rules. the resource of rules must be equals to res
+// buildResourceTrafficShapingController builds TrafficShapingController slice from rules.
+// the resource of rules must be equals to res
 func buildResourceTrafficShapingController(res string, rulesOfRes []*Rule, oldResTcs []*TrafficShapingController) []*TrafficShapingController {
 	newTcsOfRes := make([]*TrafficShapingController, 0, len(rulesOfRes))
 	for _, rule := range rulesOfRes {

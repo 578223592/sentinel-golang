@@ -59,35 +59,36 @@ func main() {
 				e, b := sentinel.Entry(resName, sentinel.WithTrafficType(base.Inbound))
 				if b != nil {
 					// Blocked. We could get the block reason from the BlockError.
-					time.Sleep(time.Duration(rand.Uint64()%10) * time.Millisecond)
+					// 被流控
+					log.Printf("blocked %s \n", b.BlockMsg())
 				} else {
 					// Passed, wrap the logic here.
-					time.Sleep(time.Duration(rand.Uint64()%10) * time.Millisecond)
-
+					// 通过
+					log.Println("pass...")
 					// Be sure the entry is exited finally.
 					e.Exit()
 				}
-
+				time.Sleep(time.Duration(rand.Uint64()%1000) * time.Millisecond)
 			}
 		}()
 	}
 
-	// Simulate a scenario in which flow rules are updated concurrently
-	go func() {
-		time.Sleep(time.Second * 10)
-		_, err = flow.LoadRules([]*flow.Rule{
-			{
-				Resource:               resName,
-				TokenCalculateStrategy: flow.Direct,
-				ControlBehavior:        flow.Reject,
-				Threshold:              80,
-				StatIntervalInMs:       1000,
-			},
-		})
-		if err != nil {
-			log.Fatalf("Unexpected error: %+v", err)
-			return
-		}
-	}()
+	//// Simulate a scenario in which flow rules are updated concurrently
+	//go func() {
+	//	time.Sleep(time.Second * 5)
+	//	_, err = flow.LoadRules([]*flow.Rule{
+	//		{
+	//			Resource:               resName,
+	//			TokenCalculateStrategy: flow.Direct,
+	//			ControlBehavior:        flow.Reject,
+	//			Threshold:              80,
+	//			StatIntervalInMs:       1000,
+	//		},
+	//	})
+	//	if err != nil {
+	//		log.Fatalf("Unexpected error: %+v", err)
+	//		return
+	//	}
+	//}()
 	<-ch
 }

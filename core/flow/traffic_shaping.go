@@ -50,7 +50,7 @@ type standaloneStatistic struct {
 	reuseResourceStat bool
 	// readOnlyMetric is the readonly metric statistic.
 	// if reuseResourceStat is true, it would be the reused SlidingWindowMetric
-	// if reuseResourceStat is false, it would be the BucketLeapArray
+	// if reuseResourceStat is false, it would be the BucketLeapArray   //todo 这两个能google搜到，待学习
 	readOnlyMetric base.ReadStat
 	// writeOnlyMetric is the write only metric statistic.
 	// if reuseResourceStat is true, it would be nil
@@ -58,6 +58,7 @@ type standaloneStatistic struct {
 	writeOnlyMetric base.WriteStat
 }
 
+// TrafficShapingController 每条流控规则（flow.Rule）生成相应的流量调配器，流量控制的核心
 type TrafficShapingController struct {
 	flowCalculator TrafficShapingCalculator
 	flowChecker    TrafficShapingChecker
@@ -86,7 +87,7 @@ func (t *TrafficShapingController) FlowCalculator() TrafficShapingCalculator {
 func (t *TrafficShapingController) PerformChecking(resStat base.StatNode, batchCount uint32, flag int32) *base.TokenResult {
 	allowedTokens := t.flowCalculator.CalculateAllowedTokens(batchCount, flag)
 
-	resourceFlowThresholdGauge.Set(float64(allowedTokens), t.rule.Resource)
+	resourceFlowThresholdGauge.Set(allowedTokens, t.rule.Resource)
 
 	return t.flowChecker.DoCheck(resStat, batchCount, allowedTokens)
 }

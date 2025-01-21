@@ -130,15 +130,16 @@ func WithAttachments(data map[interface{}]interface{}) EntryOption {
 }
 
 // Entry is the basic API of Sentinel.
+// 可以看一下这种opts的设计思路，内部应该是构建者设计模式，只改变某一个配置项目
 func Entry(resource string, opts ...EntryOption) (*base.SentinelEntry, *base.BlockError) {
-	options := entryOptsPool.Get().(*EntryOptions)
+	options := entryOptsPool.Get().(*EntryOptions) //池子中拿到options
 	defer func() {
 		options.Reset()
 		entryOptsPool.Put(options)
 	}()
 
 	for _, opt := range opts {
-		opt(options)
+		opt(options) //根据传入配置包装options
 	}
 	if options.slotChain == nil {
 		options.slotChain = GlobalSlotChain()

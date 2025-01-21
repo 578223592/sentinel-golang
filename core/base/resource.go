@@ -30,6 +30,7 @@ const (
 )
 
 // TrafficType describes the traffic type: Inbound or Outbound
+// 代表流量的类型：入站流量、出站流量
 type TrafficType int32
 
 const (

@@ -88,7 +88,7 @@ func NewConsoleLogger() Logger {
 	}
 }
 
-// outputFile is the full path(absolute path)
+// NewSimpleFileLogger outputFile is the full path(absolute path)
 func NewSimpleFileLogger(filepath string) (Logger, error) {
 	logFile, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 	if err != nil {

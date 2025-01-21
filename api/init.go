@@ -27,7 +27,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Initialization func initialize the Sentinel's runtime environment, including:
+// InitDefault initialization func initialize the Sentinel's runtime environment, including:
 //  1. override global config, from manually config or yaml file or env variable
 //  2. override global logger
 //  3. initiate core component async task, including: metric log, system statistic...
@@ -39,7 +39,7 @@ func InitDefault() error {
 }
 
 // InitWithParser initializes Sentinel using given config parser
-// parser deserializes the configBytes and return config.Entity
+// parser deserializes the configBytes and return config.Entity.
 func InitWithParser(configBytes []byte, parser func([]byte) (*config.Entity, error)) (err error) {
 	if parser == nil {
 		return errors.New("nil parser")
@@ -74,18 +74,19 @@ func InitWithConfig(confEntity *config.Entity) (err error) {
 	return initCoreComponents()
 }
 
-// Init loads Sentinel general configuration from the given YAML file
+// InitWithConfigFile init loads Sentinel general configuration from the given YAML file
 // and initializes Sentinel.
 func InitWithConfigFile(configPath string) error {
 	return initSentinel(configPath)
 }
 
 // initCoreComponents init core components with global config
+// 看起来都是一些关于日志的初始化的东西，好像没那么“core”
 func initCoreComponents() error {
 	if config.MetricLogFlushIntervalSec() > 0 {
 		if err := metric.InitTask(); err != nil {
 			return err
-		}
+		} //初始化日志
 	}
 
 	systemStatInterval := config.SystemStatCollectIntervalMs()

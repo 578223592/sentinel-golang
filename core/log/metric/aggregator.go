@@ -42,7 +42,7 @@ var (
 	initOnce     sync.Once
 )
 
-func InitTask() (err error) {
+func InitTask() (err error) { //todo 日志定时写入值得详细解析一波，定时写入日志
 	initOnce.Do(func() {
 		flushInterval := config.MetricLogFlushIntervalSec()
 		if flushInterval == 0 {
